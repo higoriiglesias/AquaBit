@@ -362,18 +362,20 @@ water_bg = d.execute_script("return getComputedStyle(document.getElementById('wa
 check("fundo RIO aplicado no tanque", "bg_rio" in water_bg, water_bg)
 check("fundo trocado no save", d.execute_script("return state.background") == "river")
 
-# clique no peixe do tanque = bater no vidro (não abre mais o modal)
-tap_uid = d.execute_script("return Number(document.querySelector('.fish').dataset.uid)")
+# clique no peixe do tanque abre as interações rápidas
+fish_uid = d.execute_script("return Number(document.querySelector('.fish').dataset.uid)")
 d.execute_script(
-    "const p=state.pets.find(p => p.uid === %d);p.happy=80;p.stage='adult';return 1" % tap_uid)
-happy_before = d.execute_script("return state.pets.find(p => p.uid === %d).happy" % tap_uid)
+    "const p=state.pets.find(p => p.uid === %d);p.happy=80;p.stage='adult';return 1" % fish_uid)
+happy_before = d.execute_script("return state.pets.find(p => p.uid === %d).happy" % fish_uid)
 d.execute_script("document.querySelector('.fish').click(); return 1")
 time.sleep(0.35)
-check("clicar no peixe nao abre o modal",
+check("clicar no peixe abre as interacoes sem abrir o modal",
       d.find_element(By.ID, "fishModal").get_attribute("class").find("open") == -1)
-check("vidro ondula ao clicar", d.execute_script("return document.querySelectorAll('.tap-ripple').length") >= 1)
-check("peixe fica triste com a batida",
-      d.execute_script("return state.pets.find(p => p.uid === %d).happy" % tap_uid) < happy_before)
+check("menu oferece dado, manobra, carinho e brincadeira",
+      [e.get_attribute("data-action") for e in d.find_elements(
+          By.CSS_SELECTOR, ".fish-interaction-action")] == ["dice", "trick", "cuddle", "play"])
+check("clicar no peixe nao o assusta nem reduz felicidade",
+      d.execute_script("return state.pets.find(p => p.uid === %d).happy" % fish_uid) == happy_before)
 
 # a lista lateral de peixes continua abrindo as informações
 d.execute_script("document.querySelector('#fishList .fish-item').click(); return 1")
