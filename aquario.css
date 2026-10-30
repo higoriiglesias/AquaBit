@@ -946,6 +946,31 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .fish.mid   img { filter: brightness(.86); }
 .fish.front img { filter: brightness(1.04); }
 
+.fish-emote {
+  position: absolute;
+  z-index: 1;
+  top: -54px;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  margin-left: -24px;
+  background-repeat: no-repeat;
+  background-size: 144px 48px;
+  image-rendering: pixelated;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35));
+  animation: fishEmoteFrames .54s steps(3) infinite, fishEmotePop 2.4s ease-out forwards;
+}
+@keyframes fishEmoteFrames {
+  from { background-position: 0 0; }
+  to { background-position: -144px 0; }
+}
+@keyframes fishEmotePop {
+  0% { opacity: 0; transform: translateY(7px) scale(.7); }
+  12%, 78% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-5px) scale(.9); }
+}
+
 /* águas-vivas: deriva suave */
 .fish.float img { animation-name: jellyBob; animation-duration: 5.4s; }
 @keyframes jellyBob {
@@ -1637,6 +1662,26 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   flex-wrap: wrap;
 }
 .fm-species { font-size: 13px; font-weight: 700; color: #cfe3f2; width: 100%; text-align: center; }
+.fm-name-edit {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.fm-name-edit label { color: var(--muted); font-size: 11px; font-weight: 700; }
+.fm-name-edit input {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid #24506f;
+  border-radius: 8px;
+  outline: none;
+  background: #081827;
+  color: var(--text);
+  font: 700 12px 'Nunito', system-ui, sans-serif;
+}
+.fm-name-edit input:focus { border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(79, 216, 240, .16); }
+.fm-name-edit .btn { padding: 8px 10px; white-space: nowrap; }
 .tag {
   font-family: 'Press Start 2P', monospace;
   font-size: 7px;

@@ -301,10 +301,20 @@ check("moedas +10 pelo carinho", d.execute_script("return state.coins") == coins
 # clean
 d.execute_script("state.water.clean = 20; renderAll(); return 1")
 coins_before_clean = d.execute_script("return state.coins")
+cleans_before = d.execute_script("return state.stats.cleans")
+d.find_element(By.ID, "actClean").click()
+time.sleep(0.2)
+d.find_element(By.ID, "actClean").click()
+time.sleep(0.2)
+check("limpeza parcial exige nova acao",
+      d.execute_script("return state.water.clean > 50 && state.water.clean < 100"))
+check("limpeza parcial nao conclui a tarefa",
+      d.execute_script("return !state.tasks.clean && state.stats.cleans == arguments[0]", cleans_before))
 d.find_element(By.ID, "actClean").click()
 time.sleep(0.2)
 check("limpar restaura a agua", d.execute_script("return state.water.clean") == 100)
 check("bonus ao completar as 3 tarefas", d.execute_script("return state.coins") == coins_before_clean + 25)
+check("limpeza concluida contabilizada", d.execute_script("return state.stats.cleans") == cleans_before + 1)
 time.sleep(1.2)
 check("tarefas continuam concluidas no mesmo dia",
       d.execute_script("return state.tasks.feed && state.tasks.pet && state.tasks.clean"))
@@ -370,6 +380,55 @@ d.execute_script("document.querySelector('#fishList .fish-item').click(); return
 time.sleep(0.3)
 check("lista lateral abre o modal do peixe", d.find_element(By.ID, "fishModal").get_attribute("class").find("open") >= 0)
 check("modal mostra nome do peixe", len(d.find_element(By.ID, "fmName").text) > 2, d.find_element(By.ID, "fmName").text)
+check("ficha inclui campo para dar nome ao peixe",
+      d.find_element(By.ID, "fmNameInput").is_displayed()
+      and d.find_element(By.ID, "fmNameSave").is_displayed())
+original_name = d.execute_script("return currentFish.name")
+d.find_element(By.ID, "fmNameInput").clear()
+d.find_element(By.ID, "fmNameInput").send_keys("Nemo")
+d.find_element(By.ID, "fmNameSave").click()
+check("nome personalizado persiste no save",
+      d.execute_script("return currentFish.name") == "Nemo"
+      and d.execute_script(
+          "return JSON.parse(localStorage.getItem('aquabitzee_dashboard_v1')).pets"
+          ".find(p=>p.uid===currentFish.uid).name") == "Nemo")
+d.find_element(By.ID, "fmNameInput").clear()
+d.find_element(By.ID, "fmNameInput").send_keys(original_name)
+d.find_element(By.ID, "fmNameSave").click()
+personality_checks = d.execute_script("""
+  const clown = personalityOf('clownfish');
+  const shark = personalityOf('shark');
+  const clam = personalityOf('clam');
+  const crab = cursorTargetForFish(
+    {x: 40, y: 12, affinity: 20},
+    {...personalityOf('crab'), bottom: true},
+    {x: 42, y: 12, time: Date.now()}
+  );
+  const friend = cursorTargetForFish(
+    {x: 40, y: 40, affinity: 80},
+    {...clown, bottom: false},
+    {x: 42, y: 40, time: Date.now()}
+  );
+  return {
+    schooling: clown.schooling,
+    playful: clown.playful,
+    appetite: shark.appetite > clam.appetite,
+    crabFloor: crab.fleeing && crab.y >= 9 && crab.y <= 14,
+    followsCursor: friend.following
+  };
+""")
+emote_assets_available = d.execute_async_script("""
+  const done = arguments[arguments.length - 1];
+  Promise.all(Object.values(FISH_EMOTES).map(({sprite}) =>
+    fetch(sprite).then(response => response.ok)
+  )).then(results => done(results.every(Boolean)));
+""")
+check("todos os baloes usam sprites existentes", emote_assets_available)
+check("personalidades definem cardume, brincadeira e apetite",
+      personality_checks["schooling"] and personality_checks["playful"]
+      and personality_checks["appetite"], personality_checks)
+check("caranguejo foge apenas no fundo e peixe apegado segue cursor",
+      personality_checks["crabFloor"] and personality_checks["followsCursor"], personality_checks)
 d.find_element(By.ID, "fmClose").click()
 time.sleep(0.2)
 check("fechar modal do peixe", d.find_element(By.ID, "fishModal").get_attribute("class").find("open") == -1)

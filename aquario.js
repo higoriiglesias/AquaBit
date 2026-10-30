@@ -57,6 +57,32 @@ const SPECIES = {
   ]
 };
 
+const FISH_PERSONALITY = {
+  schooling: new Set([
+    'anchovy', 'clownfish', 'clownfishRed', 'clownfishGold', 'clownfishWhite', 'clownfishYellow',
+    'surgeonfish', 'silverFish', 'reefFish', 'pinkFish', 'goldfish', 'yellowFish',
+    'purpleFish', 'bass', 'blueFish', 'trout', 'redFish', 'rubyFish'
+  ]),
+  greedy: new Set(['clownfish', 'clownfishRed', 'clownfishGold', 'clownfishWhite',
+    'clownfishYellow', 'goldfish', 'pufferfish', 'shark']),
+  lightEaters: new Set(['clam', 'jellyfish', 'pinkJellyfish', 'seaAngler']),
+  playful: new Set(['clownfish', 'clownfishRed', 'clownfishGold', 'clownfishWhite',
+    'clownfishYellow', 'goldfish', 'pinkFish', 'jellyfish', 'pinkJellyfish', 'shrimp']),
+  tidy: new Set(['surgeonfish', 'pufferfish', 'shrimp', 'catfish']),
+  shy: new Set(['angelfish', 'moonFish', 'jellyfish', 'pinkJellyfish', 'squid', 'crab'])
+};
+
+function personalityOf(speciesKey) {
+  return {
+    schooling: FISH_PERSONALITY.schooling.has(speciesKey),
+    appetite: FISH_PERSONALITY.greedy.has(speciesKey) ? 1.22
+      : FISH_PERSONALITY.lightEaters.has(speciesKey) ? 0.78 : 1,
+    playful: FISH_PERSONALITY.playful.has(speciesKey),
+    tidy: FISH_PERSONALITY.tidy.has(speciesKey),
+    shy: FISH_PERSONALITY.shy.has(speciesKey)
+  };
+}
+
 const BACKGROUNDS = [
   { key: 'reef',  name: 'SIMPLES',   price: 0,  img: 'assets/bg/bg_simples.png' },
   { key: 'cave',  name: 'ELABORADO', price: 50, img: 'assets/bg/bg_elaborado.png' },
@@ -106,6 +132,17 @@ const LEGACY_DECOR_SPRITES = {
 const DECOR_ENABLED = false;
 
 const RARITY_LABEL = { common: 'COMUM', rare: 'RARO', legendary: 'LENDÁRIO' };
+
+const FISH_EMOTES = {
+  hungry: { sprite: 'assets/emotes/pipo-popupemotes060.png', label: 'Estou com fome!' },
+  clean: { sprite: 'assets/emotes/pipo-popupemotes023.png', label: 'Preciso de uma limpeza!' },
+  affection: { sprite: 'assets/emotes/pipo-popupemotes009.png', label: 'Quero carinho!' },
+  sad: { sprite: 'assets/emotes/pipo-popupemotes021.png', label: 'Não estou me sentindo bem...' },
+  happy: { sprite: 'assets/emotes/pipo-popupemotes011.png', label: 'Estou feliz!' },
+  grateful: { sprite: 'assets/emotes/pipo-popupemotes039.png', label: 'Obrigado!' },
+  surprised: { sprite: 'assets/emotes/pipo-popupemotes032.png', label: 'Que susto!' }
+};
+const FISH_EMOTE_COOLDOWN = 9000;
 
 /* ---------------- melhorias do aquário ---------------- */
 const EQUIPMENT_CATALOG = [
@@ -180,11 +217,17 @@ let uidSeq = 1;
 let currentFish = null;
 let currentView = null;
 let gameTimer = null, gameSpawner = null, gameScore = 0, gameTimeLeft = 30;
+const fishEmoteTimes = new WeakMap();
+const fishPlayTimes = new WeakMap();
+let playerCursor = null;
 
 /* ---------------- utils ---------------- */
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const rand = (a, b) => a + Math.random() * (b - a);
+const escapeHTML = value => String(value).replace(/[&<>"']/g, char => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+})[char]);
 
 /* data local no formato YYYY-MM-DD, usada para resetar as tarefas do dia */
 function todayKey() {
@@ -340,9 +383,10 @@ function load() {
     state.pets = (data.pets || []).filter(p => known(p.species)).map(p => {
       const pet = { depth: 1, x: rand(8, 78), y: rand(28, 60), ...p };
       const sp = speciesOf(pet.species);
+      pet.affinity = Number.isFinite(pet.affinity) ? clamp(pet.affinity, 0, 100) : 25;
       if (sp.bottom) {
         pet.depth = 2;
-        if (pet.y < 9 || pet.y > 18) pet.y = clamp(12, 9, 14);
+        pet.y = clamp(pet.y, 9, 14);
       }
       return pet;
     });
@@ -1140,6 +1184,7 @@ function startLoops() {
   startBubbleLoop();
   startCoinLoop();
   startSwimLoop();
+  startEmoteLoop();
   // virou o dia com a aba aberta? reseta as tarefas do dia
   setInterval(() => {
     if (ensureDailyTasks()) {
@@ -1178,6 +1223,7 @@ function addPet(speciesKey, opts = {}) {
     love: 55,
     clean: 75,
     happy: 70,
+    affinity: rand(22, 38),
     shown: opts.shown !== undefined ? opts.shown : false,
     depth: sp.bottom ? 2 : (opts.depth !== undefined ? opts.depth : Math.floor(rand(0, 3))),
     x: sp.bottom ? rand(16, 58)
@@ -1260,7 +1306,7 @@ function renderFishList() {
     return `<div class="fish-item" data-uid="${p.uid}">
         <img src="${sp.img}" alt="">
         <div class="fi-body">
-          <div class="fi-name">${p.name}</div>
+          <div class="fi-name">${escapeHTML(p.name)}</div>
           <div class="fi-mood ${mood.cls}">${mood.emoji} ${mood.label}</div>
         </div>
       </div>`;
@@ -1377,7 +1423,7 @@ function renderTank() {
   // a profundidade não entra na assinatura: ela é aplicada direto no DOM,
   // então trocar de plano não pode recriar (e "teleportar") os peixes
   const fishSig = shownPets().slice(0, state.capacity)
-    .map(p => p.uid + ':' + p.stage).join('|');
+    .map(p => p.uid + ':' + p.stage + ':' + p.name).join('|');
   if (fishSig !== renderTank._fishSig) {
     renderTank._fishSig = fishSig;
     renderFishInTank();
@@ -1518,12 +1564,15 @@ function tapGlass(pet, el, ev) {
   const sp = speciesOf(pet.species);
   const away = (x / rect.width * 100) < pet.x ? 1 : -1;
   const minX = sp.bottom ? 12 : 2;
-  const maxX = sp.bottom ? 64 : 78;
+  const maxX = 78;
   pet.x = clamp(pet.x + away * rand(5, 11), minX, maxX);
+  if (sp.bottom) pet.y = clamp(pet.y, 9, 14);
   pet.facing = away > 0 ? 'right' : 'left';
   el.style.transitionDuration = '0.5s';
   el.style.left = pet.x + '%';
   el.style.setProperty('--fx', pet.facing === 'left' ? -1 : 1);
+  showFishEmote(pet, 'surprised', true);
+  pet.affinity = clamp((pet.affinity || 0) - 5, 0, 100);
 
   // cada batida no vidro deixa o peixe mais triste
   pet.happy = clamp(pet.happy - TAP_HAPPY_COST, 0, 100);
@@ -1535,6 +1584,32 @@ function tapGlass(pet, el, ev) {
 
   if (pet.taps === 1) toast('Não bata no vidro! O peixe se assusta 😟');
   else if (pet.taps % 6 === 0) toast('O peixe está ficando triste...');
+}
+
+function cursorTargetForFish(pet, profile, cursor) {
+  if (!cursor || Date.now() - cursor.time > 2200) return null;
+  const distance = Math.hypot((cursor.x - pet.x), (cursor.y - pet.y) * 0.8);
+  if (distance > 35) return null;
+
+  if (profile.shy && pet.affinity < 58) {
+    const direction = pet.x >= cursor.x ? 1 : -1;
+    return {
+      x: clamp(pet.x + direction * rand(10, 17), profile.bottom ? 3 : 2, 78),
+      y: profile.bottom ? clamp(pet.y, 9, 14) : clamp(pet.y + rand(-7, 7), 24, 66),
+      fleeing: true
+    };
+  }
+
+  const trustThreshold = profile.playful ? 34 : profile.schooling ? 48 : 58;
+  if (pet.affinity < trustThreshold) return null;
+  const side = pet.x >= cursor.x ? 1 : -1;
+  return {
+    x: clamp(cursor.x + side * rand(5, profile.playful ? 10 : 15), profile.bottom ? 3 : 2, 78),
+    y: profile.bottom
+      ? clamp(pet.y, 9, 14)
+      : clamp(cursor.y + rand(-5, 5), 24, 66),
+    following: true
+  };
 }
 
 /* fish swim around freely, keeping their depth layer */
@@ -1551,12 +1626,42 @@ function startSwimLoop() {
 
       const sp = speciesOf(p.species);
       const others = shownPets().slice(0, state.capacity).filter(o => o.uid !== p.uid);
+      const profile = { ...personalityOf(p.species), bottom: !!sp.bottom };
       let nx = 0, ny = 0;
-      for (let t = 0; t < 12; t++) {
-        nx = sp.bottom ? rand(12, 64) : rand(2, 76);
+      const cursorTarget = cursorTargetForFish(p, profile, playerCursor);
+      if (cursorTarget) {
+        nx = cursorTarget.x;
+        ny = cursorTarget.y;
+        if (cursorTarget.following && profile.playful
+          && Date.now() - (fishPlayTimes.get(p) || 0) > 18000) {
+          p.affinity = clamp((p.affinity || 0) + 1, 0, 100);
+          p.happy = clamp(p.happy + 1, 0, 100);
+          fishPlayTimes.set(p, Date.now());
+        }
+      } else {
+        const schoolmates = profile.schooling
+          ? others.filter(other => personalityOf(other.species).schooling)
+          : [];
+        const leader = schoolmates.length
+          ? [p, ...schoolmates].reduce((first, second) => first.uid < second.uid ? first : second)
+          : p;
+        const followsSchool = leader.uid !== p.uid && Math.random() < 0.8;
+        nx = sp.bottom ? rand(4, 78) : rand(2, 78);
         ny = sp.bottom ? rand(9, 14) : rand(27, 62);
-        const crowding = others.some(o => Math.abs((o.x || 0) - nx) < 11 && Math.abs((o.y || 0) - ny) < 17);
-        if (!crowding) break;
+        if (followsSchool) {
+          nx = clamp(leader.x + rand(-12, 12), sp.bottom ? 3 : 2, 94);
+          ny = sp.bottom ? clamp(leader.y, 9, 14) : clamp(leader.y + rand(-9, 9), 24, 66);
+        }
+        if (!followsSchool) {
+          for (let t = 0; t < 12; t++) {
+            const crowding = others.some(o => Math.abs((o.x || 0) - nx) < 11
+              && Math.abs((o.y || 0) - ny) < 17
+              && !(profile.schooling && personalityOf(o.species).schooling));
+            if (!crowding) break;
+            nx = sp.bottom ? rand(4, 78) : rand(2, 78);
+            ny = sp.bottom ? rand(9, 14) : rand(27, 62);
+          }
+        }
       }
       p.facing = nx > p.x ? 'right' : 'left';
       p.x = nx;
@@ -1582,6 +1687,94 @@ function startSwimLoop() {
       }
     });
   }, 1000);
+}
+
+function showFishEmote(pet, emotion, force = false) {
+  if (!pet || !pet.shown || !FISH_EMOTES[emotion]) return;
+  const fish = document.querySelector('.fish[data-uid="' + pet.uid + '"]');
+  if (!fish) return;
+
+  const now = Date.now();
+  if (!force && now - (fishEmoteTimes.get(pet) || 0) < FISH_EMOTE_COOLDOWN) return;
+  fishEmoteTimes.set(pet, now);
+
+  if (fish._emoteTimeout) clearTimeout(fish._emoteTimeout);
+  const previousEmote = fish.querySelector('.fish-emote');
+  if (previousEmote) previousEmote.remove();
+
+  const emote = document.createElement('span');
+  emote.className = 'fish-emote';
+  emote.style.backgroundImage = 'url("' + FISH_EMOTES[emotion].sprite + '")';
+  emote.setAttribute('role', 'img');
+  emote.setAttribute('aria-label', FISH_EMOTES[emotion].label);
+  fish.appendChild(emote);
+  fish._emoteTimeout = setTimeout(() => {
+    emote.remove();
+    fish._emoteTimeout = null;
+  }, 2400);
+}
+
+function fishNeedsEmote(pet) {
+  const needs = [
+    { emotion: 'hungry', score: (52 - pet.hunger) / 52 },
+    { emotion: 'clean', score: Math.max(
+      (48 - pet.clean) / 48,
+      (30 - state.water.clean) / 30
+    ) },
+    { emotion: 'affection', score: (45 - pet.love) / 45 },
+    { emotion: 'sad', score: Math.max(
+      (45 - pet.happy) / 45,
+      (35 - avgStats(pet)) / 35
+    ) }
+  ];
+  const need = needs.reduce((mostUrgent, candidate) =>
+    candidate.score > mostUrgent.score ? candidate : mostUrgent);
+  return need.score > 0 ? need.emotion : null;
+}
+
+function fishNeedScore(pet) {
+  const emotion = fishNeedsEmote(pet);
+  if (!emotion) return 0;
+  const needs = {
+    hungry: (52 - pet.hunger) / 52,
+    clean: Math.max((48 - pet.clean) / 48, (30 - state.water.clean) / 30),
+    affection: (45 - pet.love) / 45,
+    sad: Math.max((45 - pet.happy) / 45, (35 - avgStats(pet)) / 35)
+  };
+  return needs[emotion];
+}
+
+function reactToFishAction(pets, stat, emotion) {
+  const available = pets.filter(pet => pet.shown);
+  if (!available.length) return;
+  const pet = available.reduce((neediest, candidate) =>
+    candidate[stat] < neediest[stat] ? candidate : neediest);
+  showFishEmote(pet, fishNeedsEmote(pet) || emotion, true);
+}
+
+function startEmoteLoop() {
+  setInterval(() => {
+    if (document.hidden) return;
+    const pets = shownPets().slice(0, state.capacity);
+    if (!pets.length) return;
+
+    const now = Date.now();
+    const needingAttention = pets
+      .filter(pet => fishNeedsEmote(pet)
+        && now - (fishEmoteTimes.get(pet) || 0) >= FISH_EMOTE_COOLDOWN)
+      .sort((first, second) => fishNeedScore(second) - fishNeedScore(first));
+    if (needingAttention.length) {
+      const mostUrgent = needingAttention[0];
+      showFishEmote(mostUrgent, fishNeedsEmote(mostUrgent));
+      return;
+    }
+
+    const healthyFish = pets.filter(pet => !fishNeedsEmote(pet)
+      && now - (fishEmoteTimes.get(pet) || 0) >= FISH_EMOTE_COOLDOWN);
+    if (healthyFish.length && Math.random() < 0.08) {
+      showFishEmote(healthyFish[Math.floor(Math.random() * healthyFish.length)], 'happy');
+    }
+  }, 3000);
 }
 
 function renderDecorInTank() {
@@ -1658,10 +1851,11 @@ function waterTick() {
 
   state.pets.forEach(p => {
     if (!p.shown) return;
-    p.hunger = clamp(p.hunger - 0.55, 0, 100);
+    const personality = personalityOf(p.species);
+    p.hunger = clamp(p.hunger - 0.55 * personality.appetite, 0, 100);
     p.love = clamp(p.love - 0.3 * loveMult, 0, 100);
-    p.clean = clamp(p.clean - 0.25, 0, 100);
-    p.happy = clamp(p.happy - 0.35 * happyMult, 0, 100);
+    p.clean = clamp(p.clean - (personality.tidy ? 0.31 : 0.25), 0, 100);
+    p.happy = clamp(p.happy - 0.35 * happyMult * (personality.playful ? 0.9 : 1), 0, 100);
     advancePetGrowth(p);
   });
 
@@ -1735,10 +1929,12 @@ function feedAll() {
   pets.forEach(p => {
     p.hunger = clamp(p.hunger + 20, 0, 100);
     p.happy = clamp(p.happy + 4, 0, 100);
+    p.affinity = clamp((p.affinity || 0) + (personalityOf(p.species).appetite > 1 ? 4 : 2), 0, 100);
   });
   dropFood();
   completeTask('feed');
   addExp(6);
+  reactToFishAction(pets, 'hunger', 'grateful');
   renderAll();
   save();
   toast('Peixes alimentados!');
@@ -1763,25 +1959,42 @@ function petAll() {
   pets.forEach(p => {
     p.love = clamp(p.love + 14, 0, 100);
     p.happy = clamp(p.happy + 8, 0, 100);
+    p.affinity = clamp((p.affinity || 0) + 8 + (personalityOf(p.species).playful ? 3 : 0), 0, 100);
   });
   completeTask('pet');
   addExp(5);
+  reactToFishAction(pets, 'love', 'affection');
   renderAll();
   save();
   toast('♥ Carinho nos peixinhos!');
 }
 
 function cleanTank() {
-  const wasDirty = state.water.clean < 70;
-  state.water.clean = 100;
-  state.pets.forEach(p => { p.clean = clamp(p.clean + 20, 0, 100); });
-  state.stats.cleans++;
-  sparkleBurst();
-  completeTask('clean');
-  addExp(12);
+  if (state.water.clean >= 100) {
+    toast('O aquário já está limpo!');
+    return;
+  }
+
+  state.water.clean = clamp(state.water.clean + 35, 0, 100);
+  const isClean = state.water.clean >= 100;
+  if (isClean) {
+    state.pets.forEach(p => {
+      const personality = personalityOf(p.species);
+      p.clean = clamp(p.clean + (personality.tidy ? 26 : 20), 0, 100);
+      p.happy = clamp(p.happy + (personality.tidy ? 9 : 3), 0, 100);
+      p.affinity = clamp((p.affinity || 0) + (personality.tidy ? 5 : 1), 0, 100);
+    });
+    state.stats.cleans++;
+    sparkleBurst();
+    completeTask('clean');
+    addExp(12);
+    reactToFishAction(shownPets(), 'clean', 'grateful');
+  }
   renderAll();
   save();
-  toast(wasDirty ? 'Água limpa novamente!' : 'Aquário já estava limpo');
+  toast(isClean
+    ? 'Aquário limpo!'
+    : `A água está ${Math.round(state.water.clean)}% limpa. Continue limpando!`);
 }
 
 function sparkleBurst() {
@@ -1834,6 +2047,7 @@ function openFish(uid) {
   const sp = speciesOf(p.species);
 
   $('fmName').textContent = p.name;
+  $('fmNameInput').value = p.name;
   $('fmSpecies').textContent = sp.name;
   $('fmImg').src = sp.img;
   $('fmStage').textContent = p.stage === 'baby' ? 'BEBÊ' : 'ADULTO';
@@ -1863,6 +2077,23 @@ function openFish(uid) {
 function bindFishModal() {
   $('fmClose').onclick = () => closeModal('fishModal');
 
+  $('fmNameSave').onclick = () => {
+    if (!currentFish) return;
+    const name = $('fmNameInput').value.trim().slice(0, 24);
+    if (!name) {
+      toast('Digite um nome para o peixe');
+      return;
+    }
+    currentFish.name = name;
+    renderAll();
+    openFish(currentFish.uid);
+    save();
+    toast('Nome do peixe atualizado!');
+  };
+  $('fmNameInput').addEventListener('keydown', event => {
+    if (event.key === 'Enter') $('fmNameSave').click();
+  });
+
   $('fmFeed').onclick = () => {
     if (!currentFish) return;
     if (!currentFish.shown) { toast('Coloque o peixe no tanque para alimentar'); return; }
@@ -1875,7 +2106,10 @@ function bindFishModal() {
     state.food--;
     currentFish.hunger = clamp(currentFish.hunger + 25, 0, 100);
     currentFish.happy = clamp(currentFish.happy + 5, 0, 100);
+    currentFish.affinity = clamp((currentFish.affinity || 0)
+      + (personalityOf(currentFish.species).appetite > 1 ? 5 : 3), 0, 100);
     completeTask('feed');
+    showFishEmote(currentFish, fishNeedsEmote(currentFish) || 'grateful', true);
     renderAll();
     openFish(currentFish.uid);
     save();
@@ -1887,6 +2121,9 @@ function bindFishModal() {
     if (!currentFish.shown) { toast('Coloque o peixe no tanque para dar carinho'); return; }
     currentFish.love = clamp(currentFish.love + 18, 0, 100);
     currentFish.happy = clamp(currentFish.happy + 10, 0, 100);
+    currentFish.affinity = clamp((currentFish.affinity || 0)
+      + 10 + (personalityOf(currentFish.species).playful ? 3 : 0), 0, 100);
+    showFishEmote(currentFish, fishNeedsEmote(currentFish) || 'affection', true);
     renderAll();
     openFish(currentFish.uid);
     save();
@@ -1940,7 +2177,7 @@ function viewFish(body) {
     const full = !p.shown && inTank.length >= state.capacity;
     return `<div class="card ${p.shown ? '' : 'out'}" data-uid="${p.uid}">
         <img src="${sp.img}" alt="">
-        <div class="c-name">${p.name}</div>
+        <div class="c-name">${escapeHTML(p.name)}</div>
         <div class="c-sub">${mood.emoji} ${mood.label} • ${p.stage === 'baby' ? 'Bebê' : 'Adulto'}</div>
         <div class="c-sub">${p.shown ? 'No tanque' : 'Fora do aquário'} • ${RARITY_LABEL[p.rarity]}</div>
         <button class="btn fish-card-toggle ${p.shown ? '' : 'primary'}" data-fish-toggle="${p.uid}" ${full ? 'disabled' : ''}>
@@ -2456,6 +2693,23 @@ function bindGlobal() {
   };
   feedAreaEl.addEventListener('pointermove', feedPointer);
   feedAreaEl.addEventListener('pointerdown', feedPointer);
+
+  const water = $('water');
+  water.addEventListener('pointermove', event => {
+    const rect = water.getBoundingClientRect();
+    const now = Date.now();
+    playerCursor = {
+      x: clamp((event.clientX - rect.left) / rect.width * 100, 0, 100),
+      y: clamp((rect.bottom - event.clientY) / rect.height * 100, 0, 100),
+      time: now
+    };
+    if (now - (water._lastFishNudge || 0) < 450) return;
+    water._lastFishNudge = now;
+    shownPets().slice(0, state.capacity).forEach(pet => {
+      pet._nextMove = Math.min(pet._nextMove || now + 350, now + 350);
+    });
+  });
+  water.addEventListener('pointerleave', () => { playerCursor = null; });
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {

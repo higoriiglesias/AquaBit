@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="aquario.css?v=aquabit8">
+<link rel="stylesheet" href="aquario.css?v=aquabit12">
 </head>
 <body>
 
@@ -216,6 +216,11 @@
         <span class="tag" id="fmStage">BEBÊ</span>
         <span class="tag rarity" id="fmRarity">COMUM</span>
       </div>
+      <div class="fm-name-edit">
+        <label for="fmNameInput">Nome do peixe</label>
+        <input id="fmNameInput" type="text" maxlength="24" autocomplete="off">
+        <button class="btn" id="fmNameSave" type="button">SALVAR</button>
+      </div>
       <p class="fm-offline" id="fmOffline" hidden>Este peixe está <b>fora do aquário</b>. Coloque-o no tanque para poder alimentar e dar carinho.</p>
       <div class="fm-stats">
         <div class="fm-row"><span>🍤 Fome</span><div class="bar"><div class="fill" id="fmHunger"></div></div><b id="fmHungerTxt">0%</b></div>
@@ -301,6 +306,6 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="aquario.js?v=aquabit8"></script>
+<script src="aquario.js?v=aquabit12"></script>
 </body>
 </html>
