@@ -1969,3 +1969,44 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   .tank-btn small { font-size: 6px; }
   .bg-opt .bg-name { font-size: 6px; }
 }
+
+.tap-ripple.heart-ripple {
+  border-color: rgba(255, 180, 218, .95);
+  box-shadow: 0 0 14px rgba(255, 122, 168, .7), inset 0 0 10px rgba(255, 180, 218, .55);
+}
+.interaction-heart {
+  position: absolute;
+  z-index: 31;
+  color: #ff9fc4;
+  font-size: 14px;
+  font-weight: 800;
+  text-shadow: 0 1px 5px rgba(59, 12, 40, .9), 0 0 10px rgba(255, 122, 168, .65);
+  pointer-events: none;
+  animation: interactionHeart .85s ease-out forwards;
+}
+@keyframes interactionHeart {
+  from { opacity: 0; transform: translate(-50%, 6px) scale(.7); }
+  20% { opacity: 1; }
+  to { opacity: 0; transform: translate(-50%, -28px) scale(1.25); }
+}
+.fish.loved img { animation: fishLoved .52s ease-out; }
+@keyframes fishLoved {
+  0%, 100% { transform: scaleX(var(--fx, 1)) translateY(0) scale(1); }
+  45% { transform: scaleX(var(--fx, 1)) translateY(-9px) scale(1.14); }
+}
+.fish.reacting-feed img { animation: fishFeedReaction .48s ease-out; }
+@keyframes fishFeedReaction {
+  0%, 100% { transform: scaleX(var(--fx, 1)) translateY(0); }
+  35% { transform: scaleX(var(--fx, 1)) translateY(-12px) rotate(-4deg); }
+  70% { transform: scaleX(var(--fx, 1)) translateY(-3px) rotate(3deg); }
+}
+.game-bubble:active { scale: .82; }
+
+@media (prefers-reduced-motion: reduce) {
+  .interaction-heart,
+  .fish.loved img,
+  .fish.reacting-feed img,
+  .tap-ripple {
+    animation-duration: .01ms !important;
+  }
+}

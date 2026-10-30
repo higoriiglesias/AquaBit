@@ -170,6 +170,7 @@ const DEFAULT_STATE = {
   pets: [],
   decor: JSON.parse(JSON.stringify(STARTER_DECOR)),
   ownedDecor: {},
+  soundEnabled: true,
   tasks: { feed: false, pet: false, clean: false },
   tasksDate: null,
   stats: { cleans: 0, hatched: 0, earned: 25, games: 0, upgrades: 0, fed: 0 }
@@ -180,6 +181,7 @@ let uidSeq = 1;
 let currentFish = null;
 let currentView = null;
 let gameTimer = null, gameSpawner = null, gameScore = 0, gameTimeLeft = 30;
+let audioContext = null;
 
 /* ---------------- utils ---------------- */
 const $ = (id) => document.getElementById(id);
@@ -209,6 +211,65 @@ function toast(msg) {
   t.classList.add('show');
   clearTimeout(toast._t);
   toast._t = setTimeout(() => t.classList.remove('show'), 2100);
+}
+
+function playSound(type) {
+  if (!state.soundEnabled) return;
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return;
+  if (!audioContext) audioContext = new AudioContext();
+  if (audioContext.state === 'suspended') {
+    audioContext.resume().catch(error => console.warn('Não foi possível iniciar o áudio.', error));
+  }
+
+  const sounds = {
+    tap: [[420, 620, 0, 0.09, 'sine']],
+    feed: [[440, 590, 0, 0.1, 'triangle'], [660, 760, 0.07, 0.11, 'sine']],
+    pet: [[523, 523, 0, 0.12, 'sine'], [659, 659, 0.08, 0.14, 'sine'], [784, 784, 0.16, 0.16, 'sine']],
+    clean: [[320, 460, 0, 0.12, 'sine'], [460, 720, 0.1, 0.16, 'sine']],
+    coin: [[880, 1180, 0, 0.13, 'sine']],
+    hatch: [[392, 392, 0, 0.14, 'sine'], [523, 523, 0.12, 0.16, 'sine'], [784, 784, 0.24, 0.2, 'sine']],
+    bubble: [[620, 880, 0, 0.1, 'sine']],
+    catch: [[520, 740, 0, 0.08, 'triangle']],
+    miss: [[220, 150, 0, 0.13, 'triangle']]
+  }[type];
+  if (!sounds) return;
+
+  const now = audioContext.currentTime;
+  sounds.forEach(([startHz, endHz, delay, duration, wave]) => {
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const start = now + delay;
+    oscillator.type = wave;
+    oscillator.frequency.setValueAtTime(startHz, start);
+    oscillator.frequency.exponentialRampToValueAtTime(endHz, start + duration);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.08, start + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start(start);
+    oscillator.stop(start + duration);
+  });
+}
+
+function showTankRipple(x, y, className = '') {
+  const ripple = document.createElement('span');
+  ripple.className = 'tap-ripple' + (className ? ' ' + className : '');
+  ripple.style.left = x + 'px';
+  ripple.style.top = y + 'px';
+  $('water').appendChild(ripple);
+  setTimeout(() => ripple.remove(), 700);
+}
+
+function showFishHeart(x, y) {
+  const heart = document.createElement('span');
+  heart.className = 'interaction-heart';
+  heart.textContent = '+♥';
+  heart.style.left = x + 'px';
+  heart.style.top = y + 'px';
+  $('water').appendChild(heart);
+  setTimeout(() => heart.remove(), 900);
 }
 
 function speciesOf(key) {
@@ -331,6 +392,7 @@ function load() {
     state.lightColor = LIGHT_COLORS.some(c => c.key === data.lightColor) ? data.lightColor : 'blue';
     if (!state.lightColors.includes(state.lightColor)) state.lightColors.push(state.lightColor);
     state.tasks = Object.assign({ feed: false, pet: false, clean: false }, data.tasks || {});
+    state.soundEnabled = data.soundEnabled !== false;
     delete state.tasks.check;
     state.tasksDate = typeof data.tasksDate === 'string' ? data.tasksDate : null;
     state.stats = Object.assign({ cleans: 0, hatched: 0, earned: 25, games: 0, upgrades: 0, fed: 0 }, data.stats || {});
@@ -1472,69 +1534,47 @@ function renderFishInTank() {
     if (img.complete && img.naturalWidth) sizeFishEl(el, img, $('tank').clientWidth || 780);
     else img.addEventListener('load', () => sizeFishEl(el, img, $('tank').clientWidth || 780), { once: true });
 
-    // clicar no peixe = bater no vidro (assusta e deixa o peixe triste)
     el.onclick = (ev) => {
       ev.stopPropagation();
-      tapGlass(p, el, ev);
+      petFish(p, el, ev);
     };
 
     $('fishLayer').appendChild(el);
   });
 }
 
-/* clicar no peixe = bater no vidro: ondulação, tremor e o peixe fica triste */
-const TAP_HAPPY_COST = 7;
-const TAP_LOVE_COST = 3;
-
-function tapGlass(pet, el, ev) {
-  const tank = $('tank');
+function petFish(pet, el, ev) {
+  const now = Date.now();
+  if (now - (pet.lastInteraction || 0) < 450) return;
+  pet.lastInteraction = now;
   const water = $('water');
   const rect = water.getBoundingClientRect();
   const x = clamp(ev.clientX - rect.left, 0, rect.width);
   const y = clamp(ev.clientY - rect.top, 0, rect.height);
-
-  // ondulação no ponto do toque
-  const ripple = document.createElement('span');
-  ripple.className = 'tap-ripple';
-  ripple.style.left = x + 'px';
-  ripple.style.top = y + 'px';
-  water.appendChild(ripple);
-  setTimeout(() => ripple.remove(), 700);
-
-  // o vidro treme
-  tank.classList.remove('knock');
-  void tank.offsetWidth;
-  tank.classList.add('knock');
-  clearTimeout(tapGlass._knock);
-  tapGlass._knock = setTimeout(() => tank.classList.remove('knock'), 280);
-
-  // peixe se assusta e nada para longe do toque
-  el.classList.remove('startled');
+  showTankRipple(x, y, 'heart-ripple');
+  showFishHeart(x, Math.max(12, y - 10));
+  el.classList.remove('loved');
   void el.offsetWidth;
-  el.classList.add('startled');
-  clearTimeout(el._startle);
-  el._startle = setTimeout(() => el.classList.remove('startled'), 540);
-
-  const sp = speciesOf(pet.species);
-  const away = (x / rect.width * 100) < pet.x ? 1 : -1;
-  const minX = sp.bottom ? 12 : 2;
-  const maxX = sp.bottom ? 64 : 78;
-  pet.x = clamp(pet.x + away * rand(5, 11), minX, maxX);
-  pet.facing = away > 0 ? 'right' : 'left';
-  el.style.transitionDuration = '0.5s';
-  el.style.left = pet.x + '%';
-  el.style.setProperty('--fx', pet.facing === 'left' ? -1 : 1);
-
-  // cada batida no vidro deixa o peixe mais triste
-  pet.happy = clamp(pet.happy - TAP_HAPPY_COST, 0, 100);
-  pet.love = clamp(pet.love - TAP_LOVE_COST, 0, 100);
-  pet.taps = (pet.taps || 0) + 1;
-
+  el.classList.add('loved');
+  clearTimeout(el._loveAnimation);
+  el._loveAnimation = setTimeout(() => el.classList.remove('loved'), 560);
+  pet.love = clamp(pet.love + 4, 0, 100);
+  pet.happy = clamp(pet.happy + 3, 0, 100);
+  playSound('pet');
   renderFishList();
   save();
+}
 
-  if (pet.taps === 1) toast('Não bata no vidro! O peixe se assusta 😟');
-  else if (pet.taps % 6 === 0) toast('O peixe está ficando triste...');
+function reactFish(className) {
+  shownPets().slice(0, state.capacity).forEach(pet => {
+    const el = document.querySelector('.fish[data-uid="' + pet.uid + '"]');
+    if (!el) return;
+    el.classList.remove(className);
+    void el.offsetWidth;
+    el.classList.add(className);
+    clearTimeout(el._reaction);
+    el._reaction = setTimeout(() => el.classList.remove(className), 600);
+  });
 }
 
 /* fish swim around freely, keeping their depth layer */
@@ -1656,18 +1696,39 @@ function waterTick() {
   const happyMult = Math.max(0.35, 1 - lightCut) * (1 + stress * 1.2);
   const loveMult = Math.max(0.4, 1 - (lightOn && state.lightColor === 'pink' ? uv * 0.08 : 0));
 
+  const deadPets = [];
   state.pets.forEach(p => {
     if (!p.shown) return;
     p.hunger = clamp(p.hunger - 0.55, 0, 100);
     p.love = clamp(p.love - 0.3 * loveMult, 0, 100);
     p.clean = clamp(p.clean - 0.25, 0, 100);
     p.happy = clamp(p.happy - 0.35 * happyMult, 0, 100);
+    if (p.hunger === 0 && p.happy === 0) {
+      deadPets.push(p);
+      return;
+    }
     advancePetGrowth(p);
   });
+
+  if (deadPets.length) {
+    const deadIds = new Set(deadPets.map(p => p.uid));
+    state.pets = state.pets.filter(p => !deadIds.has(p.uid));
+    if (currentFish && deadIds.has(currentFish.uid)) {
+      currentFish = null;
+      closeModal('fishModal');
+    }
+    toast(deadPets.length === 1
+      ? `${deadPets[0].name} morreu por falta de comida e felicidade.`
+      : `${deadPets.length} peixes morreram por falta de comida e felicidade.`);
+  }
 
   renderFishList();
   renderParams();
   renderTank();
+  if (deadPets.length) {
+    renderTankSummary();
+    if (currentView === 'fish') refreshView();
+  }
   save();
 }
 
@@ -1714,6 +1775,7 @@ function startCoinLoop() {
       state.stats.earned += value;
       c.remove();
       renderHeader();
+      playSound('coin');
       save();
       toast('+' + value + ' moedas');
     };
@@ -1737,6 +1799,8 @@ function feedAll() {
     p.happy = clamp(p.happy + 4, 0, 100);
   });
   dropFood();
+  playSound('feed');
+  reactFish('reacting-feed');
   completeTask('feed');
   addExp(6);
   renderAll();
@@ -1764,6 +1828,8 @@ function petAll() {
     p.love = clamp(p.love + 14, 0, 100);
     p.happy = clamp(p.happy + 8, 0, 100);
   });
+  playSound('pet');
+  reactFish('loved');
   completeTask('pet');
   addExp(5);
   renderAll();
@@ -1777,6 +1843,7 @@ function cleanTank() {
   state.pets.forEach(p => { p.clean = clamp(p.clean + 20, 0, 100); });
   state.stats.cleans++;
   sparkleBurst();
+  playSound('clean');
   completeTask('clean');
   addExp(12);
   renderAll();
@@ -2178,6 +2245,7 @@ function hatch(rarity) {
       img.src = sp.img;
       img.style.display = 'block';
       text.textContent = sp.name + ' nasceu!';
+      playSound('hatch');
       ok.style.display = 'inline-block';
 
       addExp(30);
@@ -2276,6 +2344,15 @@ function viewAchiev(body) {
 
 function viewSettings(body) {
   body.innerHTML = `
+    <div class="section-title">ÁUDIO</div>
+    <div class="setting-row">
+      <span>Efeitos sonoros</span>
+      <button class="btn ${state.soundEnabled ? 'primary' : ''}" id="toggleSound"
+        type="button" aria-pressed="${state.soundEnabled}">
+        ${state.soundEnabled ? 'ATIVADOS' : 'SILENCIADOS'}
+      </button>
+    </div>
+
     <div class="section-title">AQUÁRIO</div>
     <div class="setting-row">
       <span>Tipo de água</span>
@@ -2295,6 +2372,12 @@ function viewSettings(body) {
     </div>
     <p class="modal-text" style="margin-top:8px">Resetar apaga o progresso e inicia um novo aquário de água salgada.</p>`;
 
+  body.querySelector('#toggleSound').onclick = () => {
+    state.soundEnabled = !state.soundEnabled;
+    save();
+    refreshView();
+    if (state.soundEnabled) playSound('tap');
+  };
   body.querySelector('#resetGame').onclick = () => {
     if (!confirm('Apagar todo o progresso e recomeçar?')) return;
     localStorage.removeItem(SAVE_KEY);
@@ -2418,6 +2501,12 @@ function bindGlobal() {
   });
 
   $('fishHead').onclick = () => openView('fish');
+  $('water').addEventListener('click', event => {
+    if (event.target.closest('.fish, .coin-float')) return;
+    const rect = $('water').getBoundingClientRect();
+    showTankRipple(event.clientX - rect.left, event.clientY - rect.top);
+    playSound('tap');
+  });
 
   $('actFeed').onclick = feedAll;
   $('actPet').onclick = petAll;
@@ -2473,6 +2562,7 @@ function bindGlobal() {
 
 /* ---------------- minigame ---------------- */
 function startGame() {
+  playSound('tap');
   gameScore = 0;
   gameTimeLeft = 30;
   $('gameScore').textContent = '0';
@@ -2502,6 +2592,7 @@ function spawnGameBubble() {
     ev.stopPropagation();
     gameScore += 5;
     $('gameScore').textContent = gameScore;
+    playSound('bubble');
     b.remove();
   };
   area.appendChild(b);
@@ -2514,6 +2605,7 @@ function endGame() {
   state.stats.earned += gameScore;
   state.stats.games++;
   addExp(15);
+  if (gameScore > 0) playSound('coin');
   $('gameArea').innerHTML = `<div style="height:100%;display:grid;place-items:center;font-weight:800;color:#bfe8ff">
     FIM! +${gameScore} moedas</div>`;
   $('gameStart').style.display = 'inline-block';
@@ -2569,6 +2661,7 @@ function openFeedGame() {
 
 function startFeedGame() {
   stopFeedGame();
+  playSound('tap');
   const area = $('feedArea');
   area.innerHTML = '';
   const fish = buildFeedFish();
@@ -2688,6 +2781,7 @@ function feedTick(ts) {
     if (f.y + f.size >= fishTop && Math.abs(cx - s.fishX) <= 34) {
       s.score += f.pts;
       s.caught++;
+      playSound('catch');
       $('feedScore').textContent = s.score;
       feedPop(cx, fishTop - 4, '+' + f.pts, f.pts >= 10);
       f.el.remove();
@@ -2700,6 +2794,7 @@ function feedTick(ts) {
       s.foods.splice(i, 1);
       s.missed++;
       s.lives--;
+      playSound('miss');
       updateFeedLives();
       area.classList.add('feed-shake');
       setTimeout(() => area.classList.remove('feed-shake'), 300);
@@ -2733,6 +2828,7 @@ function endFeedGame() {
   state.stats.games++;
   state.stats.fed = (state.stats.fed || 0) + s.caught;
   addExp(15);
+  if (earned > 0) playSound('coin');
 
   $('feedStart').style.display = 'inline-block';
   $('feedStart').textContent = 'JOGAR NOVAMENTE';
