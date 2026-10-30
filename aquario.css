@@ -922,6 +922,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   will-change: left, bottom;
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .45));
 }
+.fish.interaction-open { z-index: 24; }
 .fish.back  { width: calc(clamp(34px, 8.5%, 52px) * var(--s, 1)); }
 .fish.mid   { width: calc(clamp(44px, 11.5%, 70px) * var(--s, 1)); }
 .fish.front { width: calc(clamp(56px, 14.5%, 92px) * var(--s, 1)); }
@@ -961,6 +962,141 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35));
   animation: fishEmoteFrames .54s steps(3) infinite, fishEmotePop 2.4s ease-out forwards;
 }
+.fish-dice-emote {
+  position: absolute;
+  z-index: 6;
+  top: -57px;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  margin-left: -24px;
+  background-repeat: no-repeat;
+  background-size: 288px 48px;
+  image-rendering: pixelated;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35));
+  animation: fishDicePop 2.9s ease-out forwards;
+}
+.fish-dice-emote.rolling {
+  animation: fishDiceRoll 1.05s steps(5, end), fishDicePop 2.9s ease-out forwards;
+}
+@keyframes fishDiceRoll {
+  from { background-position: 0 0; }
+  to { background-position: -240px 0; }
+}
+@keyframes fishDicePop {
+  0% { opacity: 0; transform: translateY(7px) scale(.7); }
+  10%, 80% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-5px) scale(.9); }
+}
+.fish-interaction-menu {
+  position: absolute;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  width: min(224px, calc(100vw - 32px));
+  padding: 6px;
+  border: 1px solid #347ba0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #123550, #081c2e);
+  box-shadow: 0 7px 22px rgba(0, 0, 0, .55), 0 0 12px rgba(79, 216, 240, .22);
+}
+.fish-interaction-action {
+  min-width: 0;
+  padding: 7px 5px;
+  border: 1px solid #24506f;
+  border-radius: 7px;
+  background: #0c263d;
+  color: #d3eaf7;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.fish-interaction-action:hover:not(:disabled),
+.fish-interaction-action:focus-visible {
+  border-color: var(--cyan);
+  color: #fff;
+  outline: none;
+}
+.fish-interaction-action:disabled {
+  opacity: .48;
+  cursor: not-allowed;
+}
+.fish-trick img { animation: fishTrick .8s ease-in-out; }
+.fish-special-pose img { animation: fishSpecialPose 1.25s ease-in-out; }
+.fish-cuddled::after {
+  content: "♥";
+  position: absolute;
+  z-index: 2;
+  top: -19px;
+  left: 50%;
+  color: #ff83b7;
+  font-size: 21px;
+  text-shadow: 0 0 9px rgba(255, 131, 183, .8);
+  pointer-events: none;
+  animation: fishHeart 1.1s ease-out forwards;
+}
+.fish-playing img { animation: fishPlay 1.1s ease-in-out; }
+.fish-resting img { animation: fishRest 1.1s ease-in-out infinite alternate; }
+.fish.back.fish-hiding img { opacity: .68; filter: brightness(.58) saturate(.72); }
+.fish-visitor {
+  z-index: 12;
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .6));
+}
+.fish-visitor.arriving { animation: fishVisitor 6.3s ease-in-out forwards; }
+.fish-found-shell {
+  position: absolute;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 222, 160, .8);
+  border-radius: 50%;
+  background: rgba(15, 47, 67, .82);
+  box-shadow: 0 0 15px rgba(255, 218, 147, .65);
+  font-size: 23px;
+  pointer-events: auto;
+  animation: foundShell 1s ease-in-out infinite alternate;
+}
+.fish-found-shell:hover { transform: scale(1.12); }
+@keyframes fishTrick {
+  0%, 100% { transform: scaleX(var(--fx, 1)) rotate(0) translateY(0); }
+  35% { transform: scaleX(var(--fx, 1)) rotate(180deg) translateY(-12px); }
+  70% { transform: scaleX(var(--fx, 1)) rotate(360deg) translateY(-4px); }
+}
+@keyframes fishSpecialPose {
+  0%, 100% { transform: scaleX(var(--fx, 1)) rotate(0) scale(1); }
+  25% { transform: scaleX(var(--fx, 1)) rotate(180deg) scale(1.12); }
+  50% { transform: scaleX(var(--fx, 1)) rotate(360deg) scale(1.2); }
+  75% { transform: scaleX(var(--fx, 1)) rotate(540deg) scale(1.08); }
+}
+@keyframes fishHeart {
+  from { opacity: 0; transform: translate(-50%, 8px) scale(.6); }
+  20%, 65% { opacity: 1; }
+  to { opacity: 0; transform: translate(-50%, -25px) scale(1.15); }
+}
+@keyframes fishPlay {
+  0%, 100% { transform: scaleX(var(--fx, 1)) translateY(0); }
+  30% { transform: scaleX(var(--fx, 1)) rotate(-12deg) translateY(-8px); }
+  65% { transform: scaleX(var(--fx, 1)) rotate(12deg) translateY(-3px); }
+}
+@keyframes fishRest {
+  from { transform: scaleX(var(--fx, 1)) translateY(0); opacity: .78; }
+  to { transform: scaleX(var(--fx, 1)) translateY(2px); opacity: .95; }
+}
+@keyframes fishVisitor {
+  0% { opacity: 0; transform: translateX(0); }
+  12%, 82% { opacity: .95; }
+  100% { opacity: 0; transform: translateX(120vw); }
+}
+@keyframes foundShell {
+  from { transform: translateY(0) scale(.95); }
+  to { transform: translateY(-5px) scale(1.08); }
+}
 @keyframes fishEmoteFrames {
   from { background-position: 0 0; }
   to { background-position: -144px 0; }
@@ -976,45 +1112,6 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 @keyframes jellyBob {
   0%, 100% { transform: scaleX(var(--fx, 1)) translateY(0) rotate(-2deg); }
   50%      { transform: scaleX(var(--fx, 1)) translateY(-8px) rotate(2deg); }
-}
-
-/* ---------- bater no vidro ---------- */
-/* ondulação no ponto do toque */
-.tap-ripple {
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  margin: -9px 0 0 -9px;
-  border-radius: 50%;
-  border: 2px solid rgba(214, 248, 255, .95);
-  box-shadow: 0 0 14px rgba(130, 220, 255, .7), inset 0 0 10px rgba(180, 240, 255, .55);
-  pointer-events: none;
-  z-index: 30;
-  animation: tapRipple .65s ease-out forwards;
-}
-@keyframes tapRipple {
-  0%   { transform: scale(.25); opacity: 0; }
-  15%  { opacity: 1; }
-  100% { transform: scale(3.4); opacity: 0; }
-}
-
-/* o aquário treme com a batida */
-.tank.knock { animation: tankKnock .28s ease-out; }
-@keyframes tankKnock {
-  0%, 100% { transform: translate3d(0, 0, 0); }
-  20%      { transform: translate3d(2px, 0, 0); }
-  45%      { transform: translate3d(-2px, 1px, 0); }
-  70%      { transform: translate3d(1px, 0, 0); }
-}
-
-/* peixe assustado: tremida rápida */
-.fish.startled img { animation: fishStartle .54s ease-out; }
-@keyframes fishStartle {
-  0%, 100% { transform: scaleX(var(--fx, 1)) translate(0, 0) rotate(0); }
-  15%      { transform: scaleX(var(--fx, 1)) translate(3px, -3px) rotate(-5deg); }
-  35%      { transform: scaleX(var(--fx, 1)) translate(-3px, 2px) rotate(5deg); }
-  55%      { transform: scaleX(var(--fx, 1)) translate(2px, -2px) rotate(-3deg); }
-  75%      { transform: scaleX(var(--fx, 1)) translate(-1px, 1px) rotate(1deg); }
 }
 
 /* decor sprites */
@@ -1063,11 +1160,26 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   animation: coinBob 1.6s ease-in-out infinite, coinIn .35s ease-out;
   filter: drop-shadow(0 0 7px rgba(255, 201, 74, .8));
 }
+.coin-float.coin-targeted {
+  filter: drop-shadow(0 0 10px rgba(255, 236, 150, .95));
+}
+.coin-float.coin-targeted::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border: 1px solid rgba(255, 238, 164, .65);
+  border-radius: 50%;
+  animation: coinTargetPulse .9s ease-out infinite;
+}
 @keyframes coinBob {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-7px); }
 }
 @keyframes coinIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes coinTargetPulse {
+  from { transform: scale(.65); opacity: .8; }
+  to { transform: scale(1.35); opacity: 0; }
+}
 
 /* cleaning sparkle */
 .sparkle {
@@ -1712,7 +1824,28 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .fm-row .fill.pink { background: linear-gradient(90deg, #d9538a, #ff9cc2); }
 .fm-row .fill.cyan { background: linear-gradient(90deg, #2aa8c9, #74e6ff); }
 .fm-row .fill.gold { background: linear-gradient(90deg, #c9971d, #ffdb73); }
+.fm-row .fill.bond { background: linear-gradient(90deg, #b9439f, #ff9fca); }
 .fm-row b { text-align: right; font-size: 11px; color: #cfe3f2; }
+.fm-row.fm-bond-row { grid-template-columns: 88px minmax(40px, 1fr) 118px; }
+.fm-friendship {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #1e4560;
+  border-radius: 8px;
+  background: rgba(8, 24, 39, .65);
+  color: #a9c5d8;
+  font-size: 11px;
+}
+.fm-friendship b {
+  min-width: 0;
+  color: #cfe3f2;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .fm-actions { display: flex; flex-direction: column; gap: 9px; }
 .fm-offline {
@@ -1727,6 +1860,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 .fm-offline b { color: #ffe6bf; }
 .fm-stats.off .fm-row { opacity: .55; }
+.fm-stats.off .fm-friendship { opacity: .55; }
 .btn.ghost { background: none; border-color: #24425c; color: #9ec4dc; }
 
 .hatch-stage {
