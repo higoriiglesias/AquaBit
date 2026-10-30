@@ -135,10 +135,10 @@ const RARITY_LABEL = { common: 'COMUM', rare: 'RARO', legendary: 'LENDÁRIO' };
 
 const FISH_EMOTES = {
   hungry: { sprite: 'assets/emotes/pipo-popupemotes060.png', label: 'Estou com fome!' },
-  clean: { sprite: 'assets/emotes/pipo-popupemotes026.png', label: 'Preciso de uma limpeza!' },
+  clean: { sprite: 'assets/emotes/pipo-popupemotes023.png', label: 'Preciso de uma limpeza!' },
   affection: { sprite: 'assets/emotes/pipo-popupemotes009.png', label: 'Quero carinho!' },
-  sad: { sprite: 'assets/emotes/pipo-popupemotes027.png', label: 'Não estou me sentindo bem...' },
-  happy: { sprite: 'assets/emotes/pipo-popupemotes013.png', label: 'Estou feliz!' },
+  sad: { sprite: 'assets/emotes/pipo-popupemotes021.png', label: 'Não estou me sentindo bem...' },
+  happy: { sprite: 'assets/emotes/pipo-popupemotes011.png', label: 'Estou feliz!' },
   grateful: { sprite: 'assets/emotes/pipo-popupemotes039.png', label: 'Obrigado!' },
   surprised: { sprite: 'assets/emotes/pipo-popupemotes032.png', label: 'Que susto!' }
 };

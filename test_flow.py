@@ -417,6 +417,13 @@ personality_checks = d.execute_script("""
     followsCursor: friend.following
   };
 """)
+emote_assets_available = d.execute_async_script("""
+  const done = arguments[arguments.length - 1];
+  Promise.all(Object.values(FISH_EMOTES).map(({sprite}) =>
+    fetch(sprite).then(response => response.ok)
+  )).then(results => done(results.every(Boolean)));
+""")
+check("todos os baloes usam sprites existentes", emote_assets_available)
 check("personalidades definem cardume, brincadeira e apetite",
       personality_checks["schooling"] and personality_checks["playful"]
       and personality_checks["appetite"], personality_checks)
