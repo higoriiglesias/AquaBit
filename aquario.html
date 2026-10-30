@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a1526">
+<title>AquaBit</title>
+<link rel="icon" type="image/png" href="assets/peixes/Orange%201%20A.png">
+<link rel="apple-touch-icon" href="assets/peixes/Orange%201%20A.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="aquario.css?v=aquabit8">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ================= HEADER ================= -->
+  <header class="topbar">
+    <div class="brand">
+      <img class="brand-icon" src="assets/peixes/Orange 1 A.png" alt="">
+      <span class="brand-text">Aqua<span class="brand-accent">Bit</span></span>
+      <span class="brand-dots">°°</span>
+    </div>
+
+    <div class="top-actions">
+      <div class="chip gold"><img class="chip-icon" src="assets/outros/moeda.png" alt=""><span id="coins">25</span></div>
+      <div class="chip food" title="Comida disponível"><img class="chip-icon" src="assets/outros/comida.png" alt=""><span id="foodCount">0</span></div>
+      <div class="chip gem"><span class="chip-icon">💎</span><span id="gems">0</span></div>
+      <button class="icon-btn" id="btnSettings" title="Configurações">⚙</button>
+      <div class="layout-actions">
+        <button class="btn" id="layoutReset" type="button" hidden>RESTAURAR</button>
+        <button class="btn primary" id="layoutToggle" type="button" aria-pressed="false">ORGANIZAR GRADE</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= DASHBOARD ================= -->
+  <main class="dashboard" id="dashboard">
+    <div class="dashboard-toolbar">
+      <span class="layout-message" id="layoutMessage" aria-live="polite">Organize os painéis do seu aquário</span>
+      <div class="dashboard-window-tools">
+        <div class="dashboard-minimized-dock" id="dashboardMinimized" aria-label="Painéis minimizados"></div>
+        <div class="dashboard-window-manager">
+          <button class="btn" id="windowManagerToggle" type="button" aria-expanded="false"
+                  aria-controls="windowManagerMenu">JANELAS</button>
+          <div class="dashboard-window-menu" id="windowManagerMenu" aria-label="Painéis fechados" hidden></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- LEFT ---------- -->
+    <aside class="col col-left">
+
+      <section class="panel">
+        <div class="panel-head">
+          <span class="panel-icon">🐠</span>
+          <h2>SEU AQUÁRIO</h2>
+        </div>
+        <div class="level-line">
+          <span class="star">★</span>
+          <span>Nível <b id="levelNum">1</b></span>
+        </div>
+        <div class="progress"><div class="progress-fill" id="expFill"></div></div>
+        <div class="progress-label"><span id="expNow">0</span> / <span id="expMax">250</span> EXP</div>
+        <div class="summary-grid" id="tankSummary"></div>
+      </section>
+
+      <section class="panel grow">
+        <div class="panel-head clickable" id="fishHead" title="Ver todos os peixes">
+          <span class="panel-icon">🐟</span>
+          <h2>PEIXES</h2>
+          <span class="panel-count"><span id="fishCount">0</span> / <span id="fishMax">4</span></span>
+          <span class="panel-chevron">›</span>
+        </div>
+        <div class="fish-list" id="fishList"></div>
+      </section>
+
+      <section class="panel" id="panelParams">
+        <div class="panel-head clickable" id="paramsHead" title="Loja e melhorias do aquário">
+          <span class="panel-icon">💧</span>
+          <h2>ÁGUA</h2>
+          <span class="panel-badge" id="waterQuality">IDEAL</span>
+          <span class="panel-chevron">›</span>
+        </div>
+        <div class="params">
+          <div class="param">
+            <span class="param-icon">🌡️</span>
+            <span class="param-label" id="paramTempLabel">Temp.</span>
+            <span class="param-value" id="paramTemp">26°C</span>
+            <div class="param-bar"><div class="param-fill" id="tempFill"></div></div>
+          </div>
+          <div class="param">
+            <span class="param-icon">💧</span>
+            <span class="param-label" id="paramPhLabel">pH</span>
+            <span class="param-value" id="paramPh">7.2</span>
+            <div class="param-bar"><div class="param-fill" id="phFill"></div></div>
+          </div>
+          <div class="param">
+            <span class="param-icon">💨</span>
+            <span class="param-label">O₂</span>
+            <span class="param-value" id="paramOxy">92%</span>
+            <div class="param-bar"><div class="param-fill" id="oxyFill"></div></div>
+          </div>
+          <div class="param">
+            <span class="param-icon">✨</span>
+            <span class="param-label">Limpeza</span>
+            <span class="param-value" id="paramClean">100%</span>
+            <div class="param-bar"><div class="param-fill green" id="cleanFill"></div></div>
+          </div>
+        </div>
+      </section>
+
+    </aside>
+
+    <!-- ---------- CENTER ---------- -->
+    <section class="col col-center">
+
+      <div class="tank-shell">
+        <div class="tank" id="tank">
+          <div class="water" id="water">
+            <div class="rays" id="rays"></div>
+            <div class="bubbles" id="bubbles"></div>
+            <div class="murk" id="murk"></div>
+
+            <div class="decor-layer" id="decorBack"></div>
+            <div class="fish-layer" id="fishLayer"></div>
+            <div class="decor-layer front" id="decorFront"></div>
+
+            <div class="food-layer" id="foodLayer"></div>
+            <div class="coin-layer" id="coinLayer"></div>
+          </div>
+          <div class="uv-lamp" id="uvLamp" aria-hidden="true"></div>
+          <div class="sand"></div>
+          <div class="glass"></div>
+        </div>
+        <div class="tank-base"></div>
+      </div>
+
+      <div class="tank-console">
+        <div class="tank-actions">
+          <button class="tank-btn" id="actFeed"><span>🍤</span><small>ALIMENTAR</small></button>
+          <button class="tank-btn" id="actPet"><span>❤️</span><small>CARINHO</small></button>
+          <button class="tank-btn" id="actClean"><span>🧽</span><small>LIMPAR</small></button>
+          <button class="tank-btn" id="actGame"><span>🎮</span><small>JOGAR</small></button>
+          <button class="tank-btn" id="actShop"><span>🏪</span><small>LOJA</small></button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ---------- RIGHT ---------- -->
+    <aside class="col col-right">
+
+      <section class="panel">
+        <div class="panel-head">
+          <span class="panel-icon">📋</span>
+          <h2>TAREFAS DO DIA</h2>
+        </div>
+        <div class="tasks" id="taskList"></div>
+      </section>
+
+      <section class="panel grow" id="decorPanel" hidden>
+        <div class="panel-head">
+          <span class="panel-icon">🌿</span>
+          <h2>DECORAÇÕES</h2>
+        </div>
+        <div class="deco-list" id="decoList"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <span class="panel-icon">🖼️</span>
+          <h2>FUNDO</h2>
+        </div>
+        <div class="bg-list" id="bgList"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <span class="panel-icon">💡</span>
+          <h2>LUZ UV</h2>
+          <span class="panel-count" id="lightState">DESLIGADA</span>
+        </div>
+        <div class="light-dots" id="lightDots"></div>
+        <p class="light-hint" id="lightHint">Compre a Luz UV na loja</p>
+      </section>
+
+    </aside>
+  </main>
+</div>
+
+<!-- ================= OVERLAY VIEWS ================= -->
+<div class="overlay" id="overlay">
+  <div class="overlay-sheet">
+    <div class="overlay-head">
+      <h2 id="overlayTitle">PEIXES</h2>
+      <button class="close-btn" id="overlayClose">✕</button>
+    </div>
+    <div class="overlay-body" id="overlayBody"></div>
+  </div>
+</div>
+
+<!-- ================= FISH DETAIL MODAL ================= -->
+<div class="modal" id="fishModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="fmName">Peixe</h3>
+      <button class="close-btn" id="fmClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fm-sprite"><img id="fmImg" alt=""></div>
+      <div class="fm-meta">
+        <span class="fm-species" id="fmSpecies">Espécie</span>
+        <span class="tag" id="fmStage">BEBÊ</span>
+        <span class="tag rarity" id="fmRarity">COMUM</span>
+      </div>
+      <p class="fm-offline" id="fmOffline" hidden>Este peixe está <b>fora do aquário</b>. Coloque-o no tanque para poder alimentar e dar carinho.</p>
+      <div class="fm-stats">
+        <div class="fm-row"><span>🍤 Fome</span><div class="bar"><div class="fill" id="fmHunger"></div></div><b id="fmHungerTxt">0%</b></div>
+        <div class="fm-row"><span>❤️ Amor</span><div class="bar"><div class="fill pink" id="fmLove"></div></div><b id="fmLoveTxt">0%</b></div>
+        <div class="fm-row"><span>✨ Limpeza</span><div class="bar"><div class="fill cyan" id="fmClean"></div></div><b id="fmCleanTxt">0%</b></div>
+        <div class="fm-row"><span>😊 Felicidade</span><div class="bar"><div class="fill gold" id="fmHappy"></div></div><b id="fmHappyTxt">0%</b></div>
+      </div>
+      <div class="fm-actions">
+        <button class="btn primary" id="fmFeed">ALIMENTAR</button>
+        <button class="btn" id="fmPet">CARINHO</button>
+        <button class="btn ghost" id="fmToggle">OCULTAR DO TANQUE</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= HATCH MODAL ================= -->
+<div class="modal" id="hatchModal">
+  <div class="modal-card small">
+    <div class="modal-head"><h3>OVO CHOCANDO</h3><button class="close-btn" id="hatchClose">✕</button></div>
+    <div class="modal-body center">
+      <div class="hatch-stage"><img id="hatchEgg" src="assets/outros/egg.png" alt=""><img id="hatchImg" alt=""></div>
+      <p class="modal-text" id="hatchText">Chocando...</p>
+      <button class="btn primary" id="hatchOk" style="display:none">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= EGG CONTENTS MODAL ================= -->
+<div class="modal" id="eggInfoModal">
+  <div class="modal-card egg-info-card">
+    <div class="modal-head"><h3 id="eggInfoTitle">OVO</h3><button class="close-btn" id="eggInfoClose" aria-label="Fechar">✕</button></div>
+    <div class="modal-body" id="eggInfoBody"></div>
+  </div>
+</div>
+
+<!-- ================= ESCOLHA DE MINIJOGO ================= -->
+<div class="modal" id="pickGameModal">
+  <div class="modal-card small">
+    <div class="modal-head"><h3>MINIJOGOS</h3><button class="close-btn" id="pickGameClose">✕</button></div>
+    <div class="modal-body">
+      <p class="modal-text">Escolha um jogo para ganhar moedas.</p>
+      <button class="type-btn" id="pickBubbles">
+        <span class="type-icon">💧</span>
+        <span><b>ESTOURO DE BOLHAS</b><small>Estoure as bolhas com moedas</small></span>
+      </button>
+      <button class="type-btn" id="pickFeed">
+        <span class="type-icon">🍤</span>
+        <span><b>PEIXE FAMINTO</b><small>Coma a ração antes que caia</small></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MINIGAME: PEIXE FAMINTO ================= -->
+<div class="modal" id="feedModal">
+  <div class="modal-card">
+    <div class="modal-head"><h3>PEIXE FAMINTO</h3><button class="close-btn" id="feedClose">✕</button></div>
+    <div class="modal-body">
+      <div class="game-hud">
+        <span>MOEDAS <b id="feedScore">0</b></span>
+        <span>VIDAS <b id="feedLives" class="hearts">♥♥♥</b></span>
+        <span>TEMPO <b id="feedTime">30</b></span>
+      </div>
+      <div class="game-area feed-area" id="feedArea"></div>
+      <p class="modal-text center" id="feedHint">Arraste o peixe (ou use ← →) para comer a ração</p>
+      <button class="btn primary" id="feedStart">COMEÇAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MINIGAME: BOLHAS ================= -->
+<div class="modal" id="gameModal">
+  <div class="modal-card">
+    <div class="modal-head"><h3>ESTOURO DE BOLHAS</h3><button class="close-btn" id="gameClose">✕</button></div>
+    <div class="modal-body">
+      <div class="game-hud"><span>PONTOS <b id="gameScore">0</b></span><span>TEMPO <b id="gameTime">30</b></span></div>
+      <div class="game-area" id="gameArea"></div>
+      <button class="btn primary" id="gameStart">COMEÇAR</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="aquario.js?v=aquabit8"></script>
+</body>
+</html>
